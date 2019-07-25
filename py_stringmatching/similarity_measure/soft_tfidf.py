@@ -1,5 +1,5 @@
 from __future__ import division
-from math import sqrt
+from math import log, sqrt
 import collections
 
 from py_stringmatching import utils
@@ -29,7 +29,7 @@ class SoftTfIdf(HybridSimilarityMeasure):
     """
 
     def __init__(self, corpus_list=None, sim_func=Jaro().get_raw_score,
-                 threshold=0.5):
+                 threshold=0.5, dampen = True):
         self.__corpus_list = corpus_list
         self.__document_frequency = {}
         self.__compute_document_frequency()
@@ -37,6 +37,7 @@ class SoftTfIdf(HybridSimilarityMeasure):
                                                          len(self.__corpus_list))
         self.sim_func = sim_func
         self.threshold = threshold
+        self.dampen = dampen
         super(SoftTfIdf, self).__init__()
 
     def get_raw_score(self, bag1, bag2):
@@ -124,14 +125,14 @@ class SoftTfIdf(HybridSimilarityMeasure):
                 sim = similarity_map[element]
                 idf_first = corpus_size / curr_df.get(sim[first_string_pos], 1)
                 idf_second = corpus_size / curr_df.get(sim[second_string_pos], 1)
-                v_x = idf_first * tf_x.get(sim[first_string_pos], 0)
-                v_y = idf_second * tf_y.get(sim[second_string_pos], 0)
+                v_x = log(idf_first) * log(tf_x.get(sim[first_string_pos], 0) + 1) if self.dampen else idf_first * tf_x.get(sim[first_string_pos], 0)
+                v_y = log(idf_second) * log(tf_y.get(sim[second_string_pos], 0) + 1) if self.dampen else idf_second * tf_y.get(sim[second_string_pos], 0)
                 result += v_x * v_y * sim[sim_score_pos]
             # denominator
             idf = corpus_size / curr_df[element]
-            v_x = idf * tf_x.get(element, 0)
+            v_x = log(idf) * log(tf_x.get(element, 0) + 1) if self.dampen else idf * tf_x.get(element, 0)
             v_x_2 += v_x * v_x
-            v_y = idf * tf_y.get(element, 0)
+            v_y = log(idf) * log(tf_y.get(element, 0) + 1)  if self.dampen else idf * tf_y.get(element, 0)
             v_y_2 += v_y * v_y
         return result if v_x_2 == 0 else result / (sqrt(v_x_2) * sqrt(v_y_2))
 
